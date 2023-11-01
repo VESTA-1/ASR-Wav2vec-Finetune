@@ -7,5 +7,5 @@ models/
 *.gz
 *.tar
 *.out
-vocab,json
+vocab.json
 requirements.txt
