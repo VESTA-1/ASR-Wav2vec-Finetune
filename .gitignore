@@ -1,5 +1,5 @@
 .ipynb_checkpoints/
-dataset/
+data/
 wav2vec2-pretrained-demo/
 saved/
 huggingface-hub/
@@ -7,3 +7,5 @@ models/
 *.gz
 *.tar
 *.out
+vocab,json
+requirements.txt

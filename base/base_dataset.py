@@ -22,7 +22,7 @@ class BaseDataset(Dataset):
         self.dist = dist
         self.sr = sr
         # Special characters to remove in your data 
-        self.chars_to_ignore = r'[,?.!\-;:"“%\'�]'
+        self.chars_to_ignore = r'[,?.!\-;:"“%\'�，。、]'
         self.transform = transform
         self.preload_data = preload_data
         self.min_duration = min_duration

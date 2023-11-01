@@ -4,7 +4,7 @@ import os
 import numpy as np
 from typing import Dict, List
 import shutil
-
+import datetime
 from logger.tensorboard import TensorboardWriter
 from huggingface_hub import Repository
 
@@ -126,6 +126,14 @@ class BaseTrainer:
         """
         Resume experiment from the latest checkpoint.
         """
+        temp, _ = os.path.split(self.save_dir)
+        temp, target_time = os.path.split(temp)
+        timestamps = os.listdir('./saved/ASR')
+        timestamps.remove(target_time)
+        target_time = datetime.datetime.strptime(target_time, "%Y_%m_%d_%H_%M_%S")
+        closest_timestamp = min(timestamps, key=lambda x: abs(target_time - datetime.datetime.strptime(x, "%Y_%m_%d_%H_%M_%S")))
+        new_save_dir = os.path.join(temp, closest_timestamp, 'checkpoints')
+        latest_model_path = os.path.join(new_save_dir, "latest_model.tar")
         latest_model_path = os.path.join(self.save_dir, "latest_model.tar")
         print("Loading model from ", latest_model_path)
         assert os.path.exists(latest_model_path), f"{latest_model_path} does not exist, can not load latest checkpoint."
