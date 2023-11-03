@@ -4,8 +4,10 @@ wav2vec2-pretrained-demo/
 saved/
 huggingface-hub/
 models/
+examples/
 *.gz
 *.tar
 *.out
 vocab.json
 requirements.txt
+*.toml
