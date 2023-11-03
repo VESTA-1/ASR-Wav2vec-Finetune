@@ -67,7 +67,7 @@ class BaseDataset(Dataset):
         del vocab_dict[" "]
         for v in self.special_tokens.values():
             vocab_dict[v] = len(vocab_dict)
-        print(vocab_dict)
+        # print(vocab_dict)
         return vocab_dict
 
     def preload_dataset(self, paths, sr) -> List:
@@ -89,7 +89,7 @@ class BaseDataset(Dataset):
 
 if __name__ == '__main__':
     ds = BaseDataset(
-        path = '/content/drive/MyDrive/ASR Finetune/dataset/vivos/test.csv', 
+        path = './data/zh_tw/train/train.txt', 
         sr = 16000, 
         preload_data = False, 
         val_size = None, 

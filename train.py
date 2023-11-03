@@ -42,7 +42,6 @@ def main(rank, world_size, config, resume, preload):
     now = datetime.datetime.now()
     save_dir =  os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S"), 'checkpoints')
     log_dir = os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S"), 'log_dir')
-    
     if rank == 0:
         # Creatr dirs
         if not os.path.exists(save_dir):
@@ -59,7 +58,6 @@ def main(rank, world_size, config, resume, preload):
     # This should be needed to be reproducible https://discuss.pytorch.org/t/setting-seed-in-torch-ddp/126638
     config["meta"]["seed"] += rank
     set_seed(config["meta"]["seed"])
-    pretrained_path = config['meta']['pretrained_path']
     config['val_dataset']['args']['sr'] = config['meta']['sr']
     config['train_dataset']['args']['sr'] = config['meta']['sr']
 
@@ -71,7 +69,7 @@ def main(rank, world_size, config, resume, preload):
 
     config["train_dataset"]["args"]["special_tokens"] = config["special_tokens"]
     config["val_dataset"]["args"]["special_tokens"] = config["special_tokens"]
-
+    pretrained_path = config['meta']['pretrained_path']
     train_base_ds = initialize_module(config["train_dataset"]["path"], args=config["train_dataset"]["args"])
     vocab_dict = train_base_ds.get_vocab_dict()
     with open('vocab.json', 'w+', encoding='utf8') as f:
@@ -181,6 +179,7 @@ def main(rank, world_size, config, resume, preload):
     cleanup()
     end_time = time.time()
     print("執行時間：%f 秒" % (end_time - start_time))
+
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='ASR TRAIN ARGS')
     args.add_argument('-c', '--config', required=True, type=str,
