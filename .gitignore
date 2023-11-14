@@ -9,6 +9,5 @@ result/
 *.gz
 *.tar
 *.out
-vocab.json
 requirements.txt
-*.toml
+base/__pycache__/
