@@ -36,14 +36,15 @@ class Inferencer:
         return pred_transcript
 
     def run(self, test_filepath):
-        filename = test_filepath.split('/')[-1].split('.')[0]
-        filetype = test_filepath.split('.')[1]
+        temp = test_filepath.split('/')[-1].split('.')
+        filename = temp[0]
+        filetype = temp[1]
         if filetype == 'txt':
             f = open(test_filepath, 'r')
             lines = f.read().splitlines()
             f.close()
 
-            f = open(test_filepath.replace(filename, 'transcript_'+filename), 'w+')
+            f = open(f'./result/transcript_{filename}.txt', 'w+', encoding='utf8')
             for line in tqdm(lines):
                 wav, _ = librosa.load(line, sr = 16000)
                 transcript = self.transcribe(wav)

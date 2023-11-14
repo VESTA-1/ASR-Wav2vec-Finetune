@@ -50,7 +50,7 @@ class BaseDataset(Dataset):
             self.df['wav'] = self.df['path'].parallel_apply(lambda filepath: load_wav(filepath, sr = self.sr))
         
     def remove_special_characters(self, transcript) -> str:
-        transcript = re.sub(self.chars_to_ignore, '', transcript).lower()
+        transcript = re.sub(self.chars_to_ignore, '', str(transcript)).lower()
         return transcript
 
     def get_vocab_dict(self) -> Dict[int, str]:

@@ -5,6 +5,7 @@ saved/
 huggingface-hub/
 models/
 examples/
+result/
 *.gz
 *.tar
 *.out
