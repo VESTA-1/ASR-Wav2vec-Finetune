@@ -34,7 +34,7 @@ def main(rank, world_size, config, resume, preload):
     os.environ['CUDA_VISIBLE_DEVICES']=config["meta"]["device_ids"]
     os.environ['TORCH_DISTRIBUTED_DEBUG'] = 'INFO'
     setup(rank, world_size)
-
+    # print(f'-------------------{rank} {world_size}')
     epochs = config["meta"]["epochs"]
     gradient_accumulation_steps = config["meta"]["gradient_accumulation_steps"]
     use_amp = config["meta"]["use_amp"]
@@ -132,17 +132,62 @@ def main(rank, world_size, config, resume, preload):
 
     # Set up metric, scheduler, optmizer
     compute_metric = Metric(processor)
-    optimizer = torch.optim.AdamW(
+
+    # optimizer = torch.optim.AdamW(
+    #     params = model.parameters(),
+    #     lr = config["optimizer"]["lr"]
+    # )
+
+    # optimizer = torch.optim.Adadelta(
+    #     params = model.parameters(),
+    #     lr = config["optimizer"]["lr"]
+    # )
+
+    # optimizer = torch.optim.SGD(
+    #     params = model.parameters(),
+    #     lr = config["optimizer"]["lr"]
+    # )
+
+    optimizer_class = initialize_module(config["optimizer"]["path"], initialize=False)
+    optimizer = optimizer_class(
         params = model.parameters(),
         lr = config["optimizer"]["lr"]
     )
+
+    print(optimizer)
     steps_per_epoch = (len(train_dl)//gradient_accumulation_steps) + (len(train_dl)%gradient_accumulation_steps != 0)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, 
+
+    scheduler_class = initialize_module(config["scheduler"]["path"], initialize=False)
+    scheduler = scheduler_class(
+        optimizer,
         max_lr=config["scheduler"]["max_lr"], 
-        epochs=epochs, 
+        epochs=epochs,
         steps_per_epoch = steps_per_epoch)
 
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    # optimizer, 
+    # max_lr=config["scheduler"]["max_lr"], 
+    # epochs=epochs, 
+    # steps_per_epoch = steps_per_epoch)
+
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #     optimizer, 
+    #     max_lr=config["scheduler"]["max_lr"], 
+    #     epochs=epochs, 
+    #     steps_per_epoch = steps_per_epoch,
+    #     three_phase=False,
+    #     cycle_momentum=False)
+    
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #     optimizer, 
+    #     max_lr=config["scheduler"]["max_lr"], 
+    #     epochs=epochs, 
+    #     steps_per_epoch = steps_per_epoch,
+    #     three_phase=True)
+    
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+
+    # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=config["scheduler"]["max_lr"], max_lr=4e-6, cycle_momentum=False)
 
     if rank == 0:
         print("Number of training utterances: ", len(train_ds))
@@ -178,7 +223,16 @@ def main(rank, world_size, config, resume, preload):
 
     cleanup()
     end_time = time.time()
-    print("執行時間：%f 秒" % (end_time - start_time))
+    def seconds_to_hours(seconds):
+        hours = seconds // 3600
+        remaining_seconds = seconds % 3600
+        minutes = remaining_seconds // 60
+        remaining_seconds = remaining_seconds % 60
+    
+        return hours, minutes, remaining_seconds
+    total_time = end_time - start_time
+    hours, minutes, remaining_seconds = seconds_to_hours(total_time)
+    print(f"總執行時間：{hours} hr, {minutes} min, {remaining_seconds} sec")
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='ASR TRAIN ARGS')

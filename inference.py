@@ -2,16 +2,16 @@ import librosa
 import torch
 import os
 import argparse
-
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 from tqdm import tqdm
-
+from datasets import load_metric
 
 class Inferencer:
     def __init__(self, device, huggingface_folder, model_path) -> None:
         self.device = device
         self.processor = Wav2Vec2Processor.from_pretrained(huggingface_folder)
         self.model = Wav2Vec2ForCTC.from_pretrained(huggingface_folder).to(self.device)
+        self.wer_metric = load_metric("wer")
         if model_path is not None:
             self.preload_model(model_path)
 
@@ -35,26 +35,42 @@ class Inferencer:
         pred_transcript = self.processor.batch_decode(pred_ids)[0]
         return pred_transcript
 
-    def run(self, test_filepath):
+    def run(self, test_filepath, model_path):
+        wer = 0
+        model_name = model_path.split('/')[3]
         temp = test_filepath.split('/')[-1].split('.')
+        data_name = test_filepath.split('/')[2]
         filename = temp[0]
         filetype = temp[1]
         if filetype == 'txt':
-            f = open(test_filepath, 'r')
+            f = open(test_filepath, 'r', encoding='utf8')
             lines = f.read().splitlines()
             f.close()
-
-            f = open(f'./result/transcript_{filename}.txt', 'w+', encoding='utf8')
+            lines.pop(0)
+            if not os.path.isdir(f'./result/{model_name}/{data_name}'):
+                os.makedirs(f'./result/{model_name}/{data_name}')
+            f = open(f'./result/{model_name}/{data_name}/transcript_{filename}.txt', 'w+', encoding='utf8')
             for line in tqdm(lines):
-                wav, _ = librosa.load(line, sr = 16000)
+                data, label = line.split('|')
+                wav, _ = librosa.load(data, sr = 16000)
                 transcript = self.transcribe(wav)
-                f.write(line + ' ' + transcript + '\n')
+                wer += torch.tensor(self.evaluate_wer(transcript, label))
+                f.write(line + '|' + transcript + '\n')
+            print(wer)
+            wer /= len(lines)
+            print(wer)
+            f.write("wer ： " + str(wer))
             f.close()
-
         else:
             wav, _ = librosa.load(test_filepath, sr = 16000)
             print(f"transcript: {self.transcribe(wav)}")
 
+    def evaluate_wer(self, pred, label):
+        # pred_strs = self.processor.batch_decode(pred)
+        # label_strs = self.processor.batch_decode(label, group_tokens=False)
+        # wer = self.wer_metric.compute(predictions=pred_strs, references=label_strs)
+        wer = self.wer_metric.compute(predictions=[pred], references=[label])
+        return wer
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='ASR INFERENCE ARGS')
@@ -75,5 +91,5 @@ if __name__ == '__main__':
         huggingface_folder = args.huggingface_folder, 
         model_path = args.model_path)
 
-    inferencer.run(args.test_filepath)
+    inferencer.run(args.test_filepath, args.model_path)
 

@@ -2,12 +2,12 @@
 name = "ASR" 
 pretrained_path = "facebook/wav2vec2-base"
 seed = 42
-epochs = 50
+epochs = 750
 save_dir = "saved/" 
 gradient_accumulation_steps = 2
-use_amp = false # Whether to use Automatic Mixed Precision for speeding up - https://pytorch.org/docs/stable/amp.html
+use_amp = true # Whether to use Automatic Mixed Precision for speeding up - https://pytorch.org/docs/stable/amp.html
 device_ids = "0" # set the gpu devices on which you want to train your model
-sr = 16000
+sr = 22050
 max_clip_grad_norm = 5.0 # torch.nn.utils.clip_grad_norm_
 
 [special_tokens]
@@ -38,17 +38,17 @@ blocking = false # whether to wait until the model is uploaded (this will be ver
 [train_dataset]
 path = "base.base_dataset.BaseDataset"
     [train_dataset.args]
-    path = "./data/cv-corpus-12.0-delta-2022-12-07/nan-tw/train.txt"
+    path = "./data/data2/train.txt"
     preload_data = false
     delimiter = "|"
     # Only train audio files that have duration in range [min_duration, max_duration]
     # min_duration = 0.5 # if not pass, default is -np.inf
     # max_duration = 20 # if not pass, default is np.inf
-    nb_workers = 16
+    nb_workers = 1
     
     [train_dataset.dataloader]
-    batch_size = 8
-    num_workers = 8
+    batch_size = 1
+    num_workers = 1
     pin_memory = true 
     drop_last = true
 
@@ -60,14 +60,14 @@ path = "base.base_dataset.BaseDataset"
 [val_dataset]
 path = "base.base_dataset.BaseDataset"
     [val_dataset.args]
-    path = "./data/cv-corpus-12.0-delta-2022-12-07/nan-tw/test.txt"
+    path = "./data/data2/test.txt"
     preload_data = false
     delimiter = "|"
-    nb_workers = 8
+    nb_workers = 1
 
     [val_dataset.dataloader]
     batch_size =  1 # Set validation batch_size > 1 may yield an incorrect score due to padding (but faster :D) - https://github.com/pytorch/fairseq/issues/3227 
-    num_workers = 8
+    num_workers = 1
 
     [val_dataset.sampler]
     shuffle = false 
@@ -75,15 +75,17 @@ path = "base.base_dataset.BaseDataset"
 
  
 [optimizer]
-lr = 8e-5
+path = "torch.optim.AdamW"
+lr = 1e-3
 
 
-[scheduler] 
+[scheduler]
+path = "torch.optim.lr_scheduler.OneCycleLR"
 max_lr = 1e-4
     
 
 [trainer]
 path = "trainer.trainer.Trainer"
     [trainer.args]
-    validation_interval = 100
+    validation_interval = 500
     save_max_metric_score = false 
