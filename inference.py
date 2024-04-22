@@ -37,9 +37,9 @@ class Inferencer:
 
     def run(self, test_filepath, model_path):
         wer = 0
-        model_name = model_path.split('/')[3]
+        model_name = model_path.split('/')[-3]
         temp = test_filepath.split('/')[-1].split('.')
-        data_name = test_filepath.split('/')[2]
+        data_name = test_filepath.split('/')[-2]
         filename = temp[0]
         filetype = temp[1]
         if filetype == 'txt':

@@ -10,6 +10,51 @@ from logger.pbar import PBar
 from typing import Dict, Union
 
 class Trainer(BaseTrainer):
+    # def __init__(self, 
+    #             dist,
+    #             rank,
+    #             n_gpus,
+    #             config,
+    #             resume,
+    #             preload,
+    #             epochs,
+    #             steps_per_epoch,
+    #             model,
+    #             compute_metric,
+    #             processor,
+    #             train_dl,
+    #             val_dl,
+    #             train_sampler,
+    #             val_sampler,
+    #             optimizer,
+    #             scheduler,
+    #             save_dir,
+    #             log_dir,
+    #             gradient_accumulation_steps,
+    #             use_amp,
+    #             max_clip_grad_norm
+    #             ):
+        # super(Trainer, self).__init__(
+        #                                 dist, 
+        #                                 rank, 
+        #                                 config,
+        #                                 resume, 
+        #                                 preload, 
+        #                                 epochs, 
+        #                                 steps_per_epoch,
+        #                                 model, 
+        #                                 processor,
+        #                                 train_dl,
+        #                                 val_dl,
+        #                                 train_sampler,
+        #                                 val_sampler,
+        #                                 optimizer, 
+        #                                 scheduler,
+        #                                 save_dir, 
+        #                                 log_dir,
+        #                                 use_amp,
+        #                                 gradient_accumulation_steps
+        #                                 )    
     def __init__(self, 
                 dist,
                 rank,
@@ -24,8 +69,6 @@ class Trainer(BaseTrainer):
                 processor,
                 train_dl,
                 val_dl,
-                train_sampler,
-                val_sampler,
                 optimizer,
                 scheduler,
                 save_dir,
@@ -33,7 +76,7 @@ class Trainer(BaseTrainer):
                 gradient_accumulation_steps,
                 use_amp,
                 max_clip_grad_norm
-                ):
+                ):        
         super(Trainer, self).__init__(
                                         dist, 
                                         rank, 
@@ -46,8 +89,6 @@ class Trainer(BaseTrainer):
                                         processor,
                                         train_dl,
                                         val_dl,
-                                        train_sampler,
-                                        val_sampler,
                                         optimizer, 
                                         scheduler,
                                         save_dir, 
@@ -81,7 +122,7 @@ class Trainer(BaseTrainer):
         return torch.cat(output_tensors, dim=0)
 
     def _train_epoch(self, epoch) -> None:
-        self.train_sampler.set_epoch(epoch)
+        # self.train_sampler.set_epoch(epoch)
         if self.rank == 0:
             print("Epoch {}: ".format(epoch+1))
             pbar = PBar(self.steps_per_epoch, 10, stateful_metrics = self.stateful_metrics)
@@ -100,7 +141,9 @@ class Trainer(BaseTrainer):
                 continue
             with autocast(enabled=self.use_amp):
                 # forward
+                # input_data = {key: value.cuda() for key, value in batch.items()}
                 self.model.train()
+                # outputs = self.model(**input_data)
                 outputs = self.model(**batch)
 
                 # divide loss by gradient accumulation steps since gradients
@@ -147,8 +190,33 @@ class Trainer(BaseTrainer):
                 if self.rank == 0:
                     # write train logs
                     self.writer.update(self.completed_steps, 'Train', train_logs)
+                    self.writer.add_scalar('Epoch/Loss/train', train_logs['loss'], epoch)
+                    self.writer.add_scalar('Epoch/WER/train', train_logs['wer'], epoch)
+                    self.writer.add_scalar('Epoch/lr', train_logs['lr'], epoch)
                     pbar.update(self.pbar_step+1, "train_", train_logs)
-                    
+
+                self.pbar_step += 1
+                self.completed_steps += 1
+
+        # if self.rank == 0:
+        #     print("\nValidation is in progress...")
+        # self.model.eval()
+        # val_logs = self._valid_epoch(self.completed_steps)
+    
+        # if self.rank == 0:
+        #     # write val logs
+        #     self.writer.update(self.completed_steps, 'Validation', val_logs)
+        #     self.writer.add_scalar('Epoch/Loss/val', val_logs['loss'], epoch)
+        #     self.writer.add_scalar('Epoch/WER/val', val_logs['wer'], epoch)
+        #     pbar.update(self.pbar_step+1, "val_", val_logs)
+
+        #     # Save best
+        #     if self._is_best_epoch(val_logs['wer'], save_max_metric_score=self.save_max_metric_score):
+        #         self._save_checkpoint(epoch, dl_step, is_best_epoch=True)
+        #     else:
+        #         self._save_checkpoint(epoch, dl_step, is_best_epoch=False)
+        # self.dist.barrier()  # see https://stackoverflow.com/questions/59760328/how-does-torch-distributed-barrier-work
+
                 # Evaluation
                 if (self.completed_steps+1) % self.validation_interval == 0:
                     if self.rank == 0:
@@ -159,6 +227,8 @@ class Trainer(BaseTrainer):
                     if self.rank == 0:
                         # write val logs
                         self.writer.update(self.completed_steps, 'Validation', val_logs)
+                        self.writer.add_scalar('Epoch/Loss/val', val_logs['loss'], epoch)
+                        self.writer.add_scalar('Epoch/WER/val', val_logs['wer'], epoch)
                         pbar.update(self.pbar_step+1, "val_", val_logs)
 
                         # Save best
@@ -174,7 +244,7 @@ class Trainer(BaseTrainer):
         self.pbar_step = 0
             
     def _valid_epoch(self, step) -> Dict[str, Union[Any, float]]:
-        self.val_sampler.set_epoch(step)
+        # self.val_sampler.set_epoch(step)
         # init logs
         val_logs = {
             "loss": 0,
@@ -184,6 +254,8 @@ class Trainer(BaseTrainer):
         for batch in tqdm(self.val_dl, total = len(self.val_dl), disable = not self.rank == 0):
             with torch.no_grad():
                 with autocast(enabled = self.use_amp):
+                    # input_data = {key: value.cuda() for key, value in batch.items()}
+                    # outputs = self.model(**input_data)
                     outputs = self.model(**batch)
 
             val_logs["loss"] += outputs.loss / len(self.val_dl)

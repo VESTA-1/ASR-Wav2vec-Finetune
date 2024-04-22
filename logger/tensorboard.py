@@ -12,3 +12,5 @@ class TensorboardWriter:
         for k, v in scores.items():
             self.writer.add_scalar(mode + '/' + k, v, step)
         
+    def add_graph(self, net, batch) -> None:
+        self.writer.add_graph(net, batch, use_strict_trace=False)

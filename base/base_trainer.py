@@ -10,6 +10,27 @@ from huggingface_hub import Repository
 
 
 class BaseTrainer:
+    # def __init__(
+    #                 self, 
+    #                 dist, 
+    #                 rank, 
+    #                 config, 
+    #                 resume, 
+    #                 preload, 
+    #                 epochs, 
+    #                 steps_per_epoch,
+    #                 model, 
+    #                 processor,
+    #                 train_dl,
+    #                 val_dl,
+    #                 train_sampler,
+    #                 val_sampler,
+    #                 optimizer, 
+    #                 scheduler, 
+    #                 save_dir, 
+    #                 log_dir,
+    #                 use_amp,
+    #                 gradient_accumulation_steps):
     def __init__(
                     self, 
                     dist, 
@@ -23,8 +44,6 @@ class BaseTrainer:
                     processor,
                     train_dl,
                     val_dl,
-                    train_sampler,
-                    val_sampler,
                     optimizer, 
                     scheduler, 
                     save_dir, 
@@ -44,8 +63,8 @@ class BaseTrainer:
         self.processor = processor
         self.train_dl = train_dl
         self.val_dl = val_dl
-        self.train_sampler = train_sampler
-        self.val_sampler = val_sampler
+        # self.train_sampler = train_sampler
+        # self.val_sampler = val_sampler
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.save_dir = save_dir
@@ -198,7 +217,8 @@ class BaseTrainer:
 
         # "model_{epoch_number}.tar"
         # Contains all checkpoint information, like "latest_model.tar". However, the newer information will no overwrite the older one.
-        torch.save(state_dict, os.path.join(self.save_dir, f"model_{str(self.completed_steps+1)}.tar"))
+        # torch.save(state_dict, os.path.join(self.save_dir, f"model_{str(self.completed_steps+1)}.tar"))
+        torch.save(state_dict, os.path.join(self.save_dir, f"model_{str(epoch+1)}.tar"))
 
         # If the model get a best metric score (is_best_epoch=True) in the current epoch,
         # the model checkpoint will be saved as "best_model.tar."

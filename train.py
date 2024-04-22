@@ -8,8 +8,7 @@ import toml
 import warnings
 import datetime
 import time
-warnings.filterwarnings('ignore')
-
+from logger.tensorboard import TensorboardWriter
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from time import gmtime, strftime
@@ -17,6 +16,9 @@ from utils.utils import *
 from utils.metric import Metric
 from dataloader.dataset import DefaultCollate
 from transformers import Wav2Vec2ForCTC, Wav2Vec2FeatureExtractor, Wav2Vec2CTCTokenizer, Wav2Vec2Processor
+import copy
+
+warnings.filterwarnings('ignore')
 
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -30,6 +32,10 @@ def cleanup():
 
 
 def main(rank, world_size, config, resume, preload):
+    # print(rank, world_size)
+    now = datetime.datetime.now()
+    now_time = now.strftime("%Y_%m_%d_%H_%M_%S")
+    record_time = strftime("%Y-%m-%d %H_%M_%S").replace(' ', '_')
     start_time = time.time()
     os.environ['CUDA_VISIBLE_DEVICES']=config["meta"]["device_ids"]
     os.environ['TORCH_DISTRIBUTED_DEBUG'] = 'INFO'
@@ -39,21 +45,24 @@ def main(rank, world_size, config, resume, preload):
     gradient_accumulation_steps = config["meta"]["gradient_accumulation_steps"]
     use_amp = config["meta"]["use_amp"]
     max_clip_grad_norm = config["meta"]["max_clip_grad_norm"]
-    now = datetime.datetime.now()
-    save_dir =  os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S"), 'checkpoints')
-    log_dir = os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S"), 'log_dir')
+    # save_dir =  os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S"), 'checkpoints')
+    # log_dir = os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S"), 'log_dir')
+    save_dir =  os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now_time, 'checkpoints')
+    log_dir = os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now_time, 'log_dir')
+
     if rank == 0:
         # Creatr dirs
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-            
+
+        config_copy = copy.deepcopy(config)
         # Store config file
-        config_name = strftime("%Y-%m-%d %H_%M_%S", gmtime()).replace(' ', '_') + '.toml'
-        with open(os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S") + '/' + config_name), 'w+') as f:
-            toml.dump(config, f)
-            f.close()
+        # config_name = strftime("%Y-%m-%d %H_%M_%S", gmtime()).replace(' ', '_') + '.toml'
+        # with open(os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now.strftime("%Y_%m_%d_%H_%M_%S") + '/' + config_name), 'w+') as f:
+        #     toml.dump(config, f)
+        #     f.close()
 
     # This should be needed to be reproducible https://discuss.pytorch.org/t/setting-seed-in-torch-ddp/126638
     config["meta"]["seed"] += rank
@@ -86,35 +95,46 @@ def main(rank, world_size, config, resume, preload):
 
     # Create train dataloader
     train_ds = train_base_ds.get_data()
-    train_sampler = torch.utils.data.distributed.DistributedSampler(
-        train_ds,
-        num_replicas=world_size,
-        rank=rank,
-        **config["train_dataset"]["sampler"]
-    )
     train_dl = DataLoader(
         dataset=train_ds,
         **config["train_dataset"]["dataloader"],
-        sampler = train_sampler,
         collate_fn=default_collate
     )
+
+    # train_ds = train_base_ds.get_data()
+    # train_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     train_ds,
+    #     num_replicas=world_size,
+    #     rank=rank,
+    #     **config["train_dataset"]["sampler"]
+    # )
+    # train_dl = DataLoader(
+    #     dataset=train_ds,
+    #     **config["train_dataset"]["dataloader"],
+    #     sampler = train_sampler,
+    #     collate_fn=default_collate
+    # )
 
     # Create val dataloader
     val_base_ds = initialize_module(config["val_dataset"]["path"], args=config["val_dataset"]["args"])
     val_ds = val_base_ds.get_data()
-    val_sampler = torch.utils.data.distributed.DistributedSampler(
-        val_ds,
-        num_replicas=world_size,
-        rank=rank,
-        **config["val_dataset"]["sampler"]
-    )
     val_dl = DataLoader(
         dataset=val_ds,
         **config["val_dataset"]["dataloader"],
-        sampler = val_sampler,
         collate_fn=default_collate
     )
-
+    # val_sampler = torch.utils.data.distributed.DistributedSampler(
+    #     val_ds,
+    #     num_replicas=world_size,
+    #     rank=rank,
+    #     **config["val_dataset"]["sampler"]
+    # )
+    # val_dl = DataLoader(
+    #     dataset=val_ds,
+    #     **config["val_dataset"]["dataloader"],
+    #     sampler = val_sampler,
+    #     collate_fn=default_collate
+    # )
 
     # Load pretrained model
     model = Wav2Vec2ForCTC.from_pretrained(
@@ -127,6 +147,7 @@ def main(rank, world_size, config, resume, preload):
     
     # freeze the wav2vec feature encoder, if you have small dataset, this helps a lot
     model.freeze_feature_encoder()
+    # model = model.cuda()
     # DDP for multi-processing
     model = DDP(model.to(rank), device_ids=[rank], find_unused_parameters=True)
 
@@ -192,8 +213,32 @@ def main(rank, world_size, config, resume, preload):
     if rank == 0:
         print("Number of training utterances: ", len(train_ds))
         print("Number of validation utterances: ", len(val_ds))
-
+        config_copy['dataset'] = {"train_size": len(train_ds), "val_size": len(val_ds)}
     trainer_class = initialize_module(config["trainer"]["path"], initialize=False)
+    # trainer = trainer_class(
+    #     dist = dist,
+    #     rank = rank,
+    #     n_gpus = world_size,
+    #     config = config,
+    #     resume = resume,
+    #     preload = preload,
+    #     epochs = epochs,
+    #     steps_per_epoch = steps_per_epoch,
+    #     model = model,
+    #     compute_metric = compute_metric,
+    #     processor = processor,
+    #     train_dl = train_dl,
+    #     val_dl = val_dl,
+    #     train_sampler = train_sampler,
+    #     val_sampler = val_sampler,
+    #     optimizer = optimizer,
+    #     scheduler = scheduler,
+    #     save_dir = save_dir,
+    #     log_dir = log_dir,
+    #     gradient_accumulation_steps = gradient_accumulation_steps,
+    #     use_amp = use_amp,
+    #     max_clip_grad_norm = max_clip_grad_norm
+    # )
     trainer = trainer_class(
         dist = dist,
         rank = rank,
@@ -208,8 +253,6 @@ def main(rank, world_size, config, resume, preload):
         processor = processor,
         train_dl = train_dl,
         val_dl = val_dl,
-        train_sampler = train_sampler,
-        val_sampler = val_sampler,
         optimizer = optimizer,
         scheduler = scheduler,
         save_dir = save_dir,
@@ -218,6 +261,7 @@ def main(rank, world_size, config, resume, preload):
         use_amp = use_amp,
         max_clip_grad_norm = max_clip_grad_norm
     )
+
     trainer.train()
 
 
@@ -233,6 +277,11 @@ def main(rank, world_size, config, resume, preload):
     total_time = end_time - start_time
     hours, minutes, remaining_seconds = seconds_to_hours(total_time)
     print(f"總執行時間：{hours} hr, {minutes} min, {remaining_seconds} sec")
+    config_name = record_time + '.toml'
+    config_copy['total_time'] = f"總執行時間：{hours} hr, {minutes} min, {remaining_seconds} sec"   
+    with open(os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now_time + '/' + config_name), 'w+') as f:
+        toml.dump(config_copy, f)
+    f.close()
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='ASR TRAIN ARGS')

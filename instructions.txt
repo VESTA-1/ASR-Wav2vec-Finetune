@@ -1,0 +1,21 @@
+tensorboard
+    tensorboard --logdir=../../../../../extra_space1/model/audio_model/ASR
+    tensorboard --logdir=../../../../../extra_space1/model/audio_model/ASR_test --port=6005
+
+
+Start training from scratch:
+    python train.py -c ./config/config.toml
+    python train.py -c ./config/config_test.toml
+Resume:
+    python train.py -c config.toml -r
+Load specific model and start training:
+    python train.py -c config.toml -p path/to/your/model.tar
+
+inference
+    python inference.py -f  ../../../../../extra_space1/data/audio_data/test_data1/label.txt -m ../../../../../extra_space1/model/audio_model/ASR/2024_03_12_15_07_06/checkpoints/best_model.tar
+    python inference.py -f ./data/cv-corpus-15.0-2023-09-08/nan-tw/train.txt -m ./saved/ASR/2023_11_20_12_02_40/checkpoints/best_model.tar
+    python inference.py -f ./data/cv-corpus-15.0-2023-09-08/nan-tw/test.txt -m ./saved/ASR/2023_11_20_12_02_40/checkpoints/best_model.tar
+
+
+best result:
+    python train.py -c ./saved/ASR/2023_11_03_16_14_11/2023-11-03_08_14_11.toml //12.0-delta-2022-12-07
