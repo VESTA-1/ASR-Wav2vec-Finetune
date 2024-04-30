@@ -34,27 +34,27 @@ class Trainer(BaseTrainer):
     #             use_amp,
     #             max_clip_grad_norm
     #             ):
-        # super(Trainer, self).__init__(
-        #                                 dist, 
-        #                                 rank, 
-        #                                 config,
-        #                                 resume, 
-        #                                 preload, 
-        #                                 epochs, 
-        #                                 steps_per_epoch,
-        #                                 model, 
-        #                                 processor,
-        #                                 train_dl,
-        #                                 val_dl,
-        #                                 train_sampler,
-        #                                 val_sampler,
-        #                                 optimizer, 
-        #                                 scheduler,
-        #                                 save_dir, 
-        #                                 log_dir,
-        #                                 use_amp,
-        #                                 gradient_accumulation_steps
-        #                                 )    
+    #     super(Trainer, self).__init__(
+    #                                     dist, 
+    #                                     rank, 
+    #                                     config,
+    #                                     resume, 
+    #                                     preload, 
+    #                                     epochs, 
+    #                                     steps_per_epoch,
+    #                                     model, 
+    #                                     processor,
+    #                                     train_dl,
+    #                                     val_dl,
+    #                                     train_sampler,
+    #                                     val_sampler,
+    #                                     optimizer, 
+    #                                     scheduler,
+    #                                     save_dir, 
+    #                                     log_dir,
+    #                                     use_amp,
+    #                                     gradient_accumulation_steps
+    #                                     )    
     def __init__(self, 
                 dist,
                 rank,
@@ -124,8 +124,8 @@ class Trainer(BaseTrainer):
     def _train_epoch(self, epoch) -> None:
         # self.train_sampler.set_epoch(epoch)
         if self.rank == 0:
-            print("Epoch {}: ".format(epoch+1))
-            pbar = PBar(self.steps_per_epoch, 10, stateful_metrics = self.stateful_metrics)
+            print("\nEpoch {}: ".format(epoch+1))
+            pbar = PBar(len(self.train_dl), 10, stateful_metrics = self.stateful_metrics)
 
         if self.resume_step >= 0 and self.rank == 0:
             print("*****Load previous time steps******")

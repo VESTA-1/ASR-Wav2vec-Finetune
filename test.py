@@ -11,21 +11,26 @@ import torch
 from datasets import load_metric
 import re
 import unicodedata
-
+import argparse
+import glob
+import os
+import random
+import soundfile
+from torchinfo import summary
 
 def preprocess_data(dir_path, des_name, copy_file):
     count = 1
     audio = []
-    label = []
+    labels = []
     # des_path = dir_path + '/final'
     des_path = dir_path + '/' + des_name
     src_path = dir_path + '/ori_data'
     all_dir = os.listdir(src_path)
-    all_dir.remove('record10-2')
     all_dir.sort()
     for e in all_dir:
-        # if e != 'record1-1':
-        #     continue
+        # print(e)
+        if e != 'record14-1':
+            continue
         data_path = src_path + f'/{e}'
         audio_path = data_path + '/audio'
         label_path = data_path + '/label.txt'
@@ -33,7 +38,7 @@ def preprocess_data(dir_path, des_name, copy_file):
             data =  fp.readlines()
         data = [unicodedata.normalize('NFKC', e).strip().replace('.mp3', '') for e in data if e.strip()!='']
         # data = [e.strip().replace('.mp3', '') for e in data if e.strip()!='']
-        # print(data)
+        # print(len(data))
         # exit()
         for i in range (0, len(data)):
             # if count == 3897:
@@ -41,8 +46,12 @@ def preprocess_data(dir_path, des_name, copy_file):
             # if '雞' in data[i]:
             #     print(e, data[i])
             if i%4 == 0:
+                print(data[i])
                 try:
                     if copy_file:
+                        if not os.path.exists(des_path+'/audio/'):
+                            os.makedirs(des_path+'/audio/')
+                        # print(audio_path + '/' + data[i]+'.mp3', des_path+'/audio/'+str(count).zfill(5)+'.mp3')
                         shutil.copyfile(audio_path + '/' + data[i]+'.mp3', des_path+'/audio/'+str(count).zfill(5)+'.mp3')
                     audio.append(str(count).zfill(5)+'.mp3')
                     # if '快' in label_temp:
@@ -50,16 +59,18 @@ def preprocess_data(dir_path, des_name, copy_file):
                     for j in string.punctuation:
                         label_temp = data[i+1].replace(j,'')
                     # print(label_temp.replace('（','(').split('(')[-1].replace(')','').replace('）','').replace('.',''))
-                    label.append(label_temp.replace('（','(').split('(')[-1].replace(')','').replace('）','').replace('.',''))
+                    label = label_temp.replace('（','(').split('(')[-1].replace(')','').replace('）','').replace('.','')
+                    # print(label)
+                    labels.append(label)
                     # label.append(data[i+1].replace('（','(').split('(')[-1].replace(')',''))
                     count += 1
                 except:
                     print('error',e, data[i], audio_path + '/' + data[i]+'.mp3')
                     continue
     if copy_file:
-        write_data(audio, label, des_name)
+        write_data(audio, labels, des_path)
         split_data(des_path)
-    return (audio, label)
+    return (audio, labels)
 
 
 def preprocess_data2(dir_path, copy_file, duplicate):
@@ -160,12 +171,12 @@ def seconds_to_hours(seconds):
         return hours, minutes, remaining_seconds
 
 
-def cal_total_time(path):
+def cal_total_time(path, ext):
     max, min = 0, 10
     total_time, count = 0, 0
-    data_list = os.listdir(path)
+    data_list = glob.glob(os.path.join(path, '**/*/*.' + ext))
     for i in tqdm(range(0, len(data_list))):
-        wav, sr = librosa.load(path + f'/{data_list[i]}', sr = 16000)
+        wav, sr = librosa.load(data_list[i], sr = 16000)
         duration = librosa.get_duration(y=wav, sr=sr)
         if duration > max:
             max = duration
@@ -180,7 +191,6 @@ def cal_total_time(path):
 
 
 def write_data(audio, label, des):
-    print(des)
     result = 'path|transcript\n'
     for i in range(0, len(audio)):
         result += des + '/audio/' + audio[i] + '|' + label[i] + '\n'
@@ -222,28 +232,67 @@ def evaluate_wer(pred, label):
     return result
 
 
+'''libriLight、librispeech資料處理'''
+def libri_data_process(src_path, des_path, ext, copy_file = False):
+    count = 1
+    audios = []
+    labels = []
+    # flac_search_path = os.path.join(src_path, "1h/0/**/*." + ext) #libright10m的路徑
+    flac_search_path = os.path.join(src_path, "**/*." + ext) #dev_other的路徑
+    # flac_search_path = os.path.join(src_path, "[1-9]*/**/*/*." + ext) #libright1h的路徑
+    for fname in sorted(glob.glob(flac_search_path, recursive=True)):
+        try:
+            if copy_file:
+                if not os.path.exists(des_path+'/audio/'):
+                    os.makedirs(des_path+'/audio/')
+                shutil.copyfile(fname, des_path+'/audio/'+str(count).zfill(5) + '.' + ext)
+            temp = fname.split('/')
+            file_path = '/'.join(temp[:-1])
+            file_name = temp[-1].split('.')[0]
+            label_name = '-'.join(file_name.split('-')[:2]) + '.trans.txt'
+            # print(fname, temp, file_path, file_name, label_name, sep='\n')
+            with open(os.path.join(file_path, label_name), "r") as fp:
+                label_data = fp.readlines()
+            for e in label_data:
+                if file_name in e:
+                    label = e.split(file_name)[-1].strip().lower()
+            audios.append(str(count).zfill(5) + '.' + ext)
+            labels.append(label)
+            count += 1
+        except:
+            print('error', fname)
+            continue
+    print(len(audios), len(labels))
+    if copy_file:
+        write_data(audios, labels, des_path)
+        # split_data(des_path)
+
+# src_path = '../../../../../extra_space1/data/libriLight/librispeech_finetuning'
+# des_path = '../../../../../extra_space1/data/audio_data/libriLight/10m'
+# src_path = '../../../../../extra_space1/data/librispeech/test-clean'
+# des_path = '../../../../../extra_space1/data/audio_data/librispeech/test_clean'
+# ext = 'flac'
+# libri_data_process(src_path, des_path, ext, True)
+# libri_data_process(src_path, des_path, ext, False)
+
+
 '''WER測試'''
 # pred = ["hai malakpot kami a misalam", "pasowa ko mato’asay tamiyanan", "kafana’ mingodo to makakay"]
 # ref = ["hai malakapot kami a misalama", "pasowal ko mato’asay tamiyanan", "kafana’ mingodo to makakaay"]
 # print("WER:", evaluate_wer(pred, ref))
 
 '''將資料統一標號，並彙整到一個資料夾'''
-# des_name = "data_6771"
+# des_name = "data_10955"
 # path = '../../../../../extra_space1/data/audio_data'
 # audio, label = preprocess_data(path, des_name, True)
 # audio, label = preprocess_data(path, des_name, False)
 # print(len(audio), len(label))
 
 '''計算音檔的長度跟數量'''
-# all_dir = os.listdir('../../../../../extra_space1/data/audio_data/ori_data')
-# all_dir.sort()
-# for e in all_dir:
-#     print(e)
-#     path = f'../../../../../extra_space1/data/audio_data/ori_data/{e}/audio'
-#     cal_total_time(path)
-# des_name = 'data_6774'
-# path = f'../../../../../extra_space1/data/audio_data/{des_name}/audio'
-# cal_total_time(path)
+# ext = 'mp3'
+# path = '../../../../../extra_space1/data/audio_data/ori_data'
+# cal_total_time(path, ext)
+
 
 '''分成句子跟詞'''
 # path = '../../../../../extra_space1/data/audio_data'
@@ -254,20 +303,26 @@ def evaluate_wer(pred, label):
 
 
 '''測試模型修改'''
-# config = Wav2Vec2Config.from_pretrained("facebook/wav2vec2-base")
-# print(config)
+count = 0
+config = Wav2Vec2Config.from_pretrained("facebook/wav2vec2-base", feat_extract_norm="layer")
+print(type(config))
 # with open('temp.txt', 'w')as f:
 #     f.write(str(config))
 # f.close()
-# model = Wav2Vec2Model(config)
+model = Wav2Vec2Model(config)
 # print(model)
 # exit()
 # model.eval()
 # config.encoder_layers = 18
 # new_model = Wav2Vec2Model(config)
-# model_dict = model.state_dict()
+model_dict = model.state_dict()
+for e in model_dict:
+    print(e, model_dict[e].shape)
+
+# print(len(model_dict))
 # new_model.load_state_dict(model_dict, strict=False)
 # print(new_model.config)
+summary(model)
 
 '''toml讀寫'''
 # import argparse
@@ -339,50 +394,4 @@ def evaluate_wer(pred, label):
 #     wav, sr = librosa.load(path + f'/{data_list[i]}', sr = 16000)
 #     duration = librosa.get_duration(y=wav, sr=sr)
 
-'''libriLight資料處理'''
-import argparse
-import glob
-import os
-import random
-import soundfile
 
-
-def libri_data_process(src_path, des_path, ext, copy_file = False):
-    count = 1
-    audios = []
-    labels = []
-    # flac_search_path = os.path.join(src_path, "1h/0/**/*." + ext) #libright10m的路徑
-    flac_search_path = os.path.join(src_path, "**/*." + ext) #dev_other的路徑
-    for fname in sorted(glob.glob(flac_search_path, recursive=True)):
-        try:
-            if copy_file:
-                if not os.path.exists(des_path+'/audio/'):
-                    os.makedirs(des_path+'/audio/')
-                shutil.copyfile(fname, des_path+'/audio/'+str(count).zfill(5) + '.' + ext)
-            temp = fname.split('/')
-            file_path = '/'.join(temp[:-1])
-            file_name = temp[-1].split('.')[0]
-            label_name = '-'.join(file_name.split('-')[:2]) + '.trans.txt'
-            # print(fname, temp, file_path, file_name, label_name, sep='\n')
-            with open(os.path.join(file_path, label_name), "r") as fp:
-                label_data = fp.readlines()
-            for e in label_data:
-                if file_name in e:
-                    label = e.split(file_name)[-1].strip()
-            audios.append(str(count).zfill(5) + '.' + ext)
-            labels.append(label)
-            count += 1
-        except:
-            print('error', fname)
-            continue
-    # print(audios, labels, len(audios), len(labels))
-    if copy_file:
-        write_data(audios, labels, des_path)
-        # split_data(des_path)
-
-# src_path = '../../../../../extra_space1/data/libriLight/librispeech_finetuning'
-# des_path = '../../../../../extra_space1/data/audio_data/libriLight/10m'
-src_path = '../../../../../extra_space1/data/librispeech/dev-other/LibriSpeech/dev-other'
-des_path = '../../../../../extra_space1/data/audio_data/librispeech/dev_other'
-ext = 'flac'
-libri_data_process(src_path, des_path, ext, True)

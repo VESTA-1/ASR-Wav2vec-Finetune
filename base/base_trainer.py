@@ -147,7 +147,8 @@ class BaseTrainer:
         """
         temp, _ = os.path.split(self.save_dir)
         temp, target_time = os.path.split(temp)
-        timestamps = os.listdir('./saved/ASR')
+        timestamps = os.listdir(self.config['meta']['save_dir']+self.config['meta']['name'])
+        print(timestamps)
         timestamps.remove(target_time)
         target_time = datetime.datetime.strptime(target_time, "%Y_%m_%d_%H_%M_%S")
         closest_timestamp = min(timestamps, key=lambda x: abs(target_time - datetime.datetime.strptime(x, "%Y_%m_%d_%H_%M_%S")))

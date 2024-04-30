@@ -15,6 +15,24 @@ inference
     python inference.py -f  ../../../../../extra_space1/data/audio_data/test_data1/label.txt -m ../../../../../extra_space1/model/audio_model/ASR/2024_03_12_15_07_06/checkpoints/best_model.tar
     python inference.py -f ./data/cv-corpus-15.0-2023-09-08/nan-tw/train.txt -m ./saved/ASR/2023_11_20_12_02_40/checkpoints/best_model.tar
     python inference.py -f ./data/cv-corpus-15.0-2023-09-08/nan-tw/test.txt -m ./saved/ASR/2023_11_20_12_02_40/checkpoints/best_model.tar
+    librispeech
+        10m
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/dev_clean/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_13_23_39/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/dev_other/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_13_23_39/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/test_clean/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_13_23_39/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/test_other/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_13_23_39/checkpoints/best_model.tar
+        1h
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/dev_clean/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_15_54_09/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/dev_other/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_15_54_09/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/test_clean/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_15_54_09/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/test_other/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_22_15_54_09/checkpoints/best_model.tar
+        10h
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/dev_clean/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_23_23_09_12/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/dev_other/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_23_23_09_12/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/test_clean/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_23_23_09_12/checkpoints/best_model.tar
+            python inference.py -f ../../../../../extra_space1/data/audio_data/librispeech/test_other/label.txt -m ../../../../../extra_space1/model/audio_model/libriLight_finetune/2024_04_23_23_09_12/checkpoints/best_model.tar
+
+    
 
 
 best result:

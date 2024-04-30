@@ -94,6 +94,7 @@ def main(rank, world_size, config, resume, preload):
     default_collate = DefaultCollate(processor, config['meta']['sr'])
 
     # Create train dataloader
+    # @tang
     train_ds = train_base_ds.get_data()
     train_dl = DataLoader(
         dataset=train_ds,
@@ -116,6 +117,7 @@ def main(rank, world_size, config, resume, preload):
     # )
 
     # Create val dataloader
+    # @tang
     val_base_ds = initialize_module(config["val_dataset"]["path"], args=config["val_dataset"]["args"])
     val_ds = val_base_ds.get_data()
     val_dl = DataLoader(
@@ -123,6 +125,9 @@ def main(rank, world_size, config, resume, preload):
         **config["val_dataset"]["dataloader"],
         collate_fn=default_collate
     )
+
+    # val_base_ds = initialize_module(config["val_dataset"]["path"], args=config["val_dataset"]["args"])
+    # val_ds = val_base_ds.get_data()
     # val_sampler = torch.utils.data.distributed.DistributedSampler(
     #     val_ds,
     #     num_replicas=world_size,
@@ -137,14 +142,22 @@ def main(rank, world_size, config, resume, preload):
     # )
 
     # Load pretrained model
+    # model = Wav2Vec2ForCTC.from_pretrained(
+    #     pretrained_path, 
+    #     ctc_loss_reduction="mean", 
+    #     pad_token_id=processor.tokenizer.pad_token_id,
+    #     vocab_size=len(processor.tokenizer),
+    #     gradient_checkpointing=False
+    # )
     model = Wav2Vec2ForCTC.from_pretrained(
-        pretrained_path, 
-        ctc_loss_reduction="mean", 
-        pad_token_id=processor.tokenizer.pad_token_id,
-        vocab_size=len(processor.tokenizer),
-        gradient_checkpointing=False
-    )
-    
+    pretrained_path, 
+    ctc_loss_reduction="mean", 
+    pad_token_id=processor.tokenizer.pad_token_id,
+    vocab_size=len(processor.tokenizer),
+    gradient_checkpointing=False,
+    num_hidden_layers=8
+    # feat_extract_norm="layer"
+    )    
     # freeze the wav2vec feature encoder, if you have small dataset, this helps a lot
     model.freeze_feature_encoder()
     # model = model.cuda()
@@ -177,7 +190,7 @@ def main(rank, world_size, config, resume, preload):
 
     print(optimizer)
     steps_per_epoch = (len(train_dl)//gradient_accumulation_steps) + (len(train_dl)%gradient_accumulation_steps != 0)
-
+    # print(steps_per_epoch)
     scheduler_class = initialize_module(config["scheduler"]["path"], initialize=False)
     scheduler = scheduler_class(
         optimizer,
@@ -276,7 +289,7 @@ def main(rank, world_size, config, resume, preload):
         return hours, minutes, remaining_seconds
     total_time = end_time - start_time
     hours, minutes, remaining_seconds = seconds_to_hours(total_time)
-    print(f"總執行時間：{hours} hr, {minutes} min, {remaining_seconds} sec")
+    print(f"\n總執行時間：{hours} hr, {minutes} min, {remaining_seconds} sec")
     config_name = record_time + '.toml'
     config_copy['total_time'] = f"總執行時間：{hours} hr, {minutes} min, {remaining_seconds} sec"   
     with open(os.path.join(config["meta"]["save_dir"], config["meta"]['name'], now_time + '/' + config_name), 'w+') as f:
